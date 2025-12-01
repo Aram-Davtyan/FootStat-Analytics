@@ -1,0 +1,34 @@
+version: '3.9'
+
+services:
+  app:
+    build: .
+    container_name: app-dev
+    env_file:
+      - .env
+    volumes:
+      - .:/var/www
+    ports:
+      - "8080:80"
+    depends_on:
+      - db
+    command: php -S 0.0.0.0:80 -t web
+
+  db:
+    image: mysql:8.0
+    container_name: db-dev
+    restart: always
+    env_file:
+      - .env
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - dbdata:/var/lib/mysql
+    ports:
+      - "3306:3306"
+
+volumes:
+  dbdata:
