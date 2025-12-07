@@ -20,14 +20,16 @@ class SiteController extends Controller
         return [
             'access' => [
                 'class' => AccessControl::class,
-                'only' => ['logout'],
+                'except' => ['login', 'error', 'captcha'],
                 'rules' => [
                     [
-                        'actions' => ['logout'],
                         'allow' => true,
                         'roles' => ['@'],
                     ],
                 ],
+                'denyCallback' => static function () {
+                    return Yii::$app->getResponse()->redirect(['site/login']);
+                },
             ],
             'verbs' => [
                 'class' => VerbFilter::class,

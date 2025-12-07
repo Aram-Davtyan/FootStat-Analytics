@@ -12,7 +12,7 @@ services:
       - "8080:80"
     depends_on:
       - db
-    command: php -S 0.0.0.0:80 -t web
+    command: php -S 0.0.0.0:80 -t web web/router.php
 
   db:
     image: mysql:8.0

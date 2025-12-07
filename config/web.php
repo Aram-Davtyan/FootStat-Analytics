@@ -16,6 +16,19 @@ $config = [
             // !!! insert a secret key in the following (if it is empty) - this is required by cookie validation
             'cookieValidationKey' => 'EP4FjWH-6GumkbJ2CbtSBwdmQ5hsnguD',
         ],
+        'assetManager' => [
+            'appendTimestamp' => true,
+            'bundles' => [
+                'yii\bootstrap5\BootstrapAsset' => [
+                    'sourcePath' => '@bower/bootstrap/dist',
+                    'css' => ['css/bootstrap.min.css'],
+                ],
+                'yii\bootstrap5\BootstrapPluginAsset' => [
+                    'sourcePath' => '@bower/bootstrap/dist',
+                    'js' => ['js/bootstrap.bundle.min.js'],
+                ],
+            ],
+        ],
         'cache' => [
             'class' => 'yii\caching\FileCache',
         ],
@@ -42,14 +55,15 @@ $config = [
             ],
         ],
         'db' => $db,
-        /*
+        'authManager' => [
+            'class' => yii\rbac\DbManager::class,
+        ],
         'urlManager' => [
             'enablePrettyUrl' => true,
             'showScriptName' => false,
             'rules' => [
             ],
         ],
-        */
     ],
     'params' => $params,
 ];
