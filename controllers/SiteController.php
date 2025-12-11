@@ -9,6 +9,7 @@ use yii\web\Response;
 use yii\filters\VerbFilter;
 use app\models\LoginForm;
 use app\models\ContactForm;
+use app\components\services\APISofascoreServices;
 
 class SiteController extends Controller
 {
@@ -55,6 +56,22 @@ class SiteController extends Controller
             ],
         ];
     }
+    /**
+     * @param $id
+     * @param $module
+     * @param array $config
+     * @param APISofascoreServices|null $sofascoreService
+     */
+    public function __construct(
+        $id,
+        $module,
+        $config = [],
+        protected ?APISofascoreServices $sofascoreService = null
+    ) {
+        $this->sofascoreService ??= new APISofascoreServices();
+        parent::__construct($id, $module, $config);
+    }
+
 
     /**
      * Displays homepage.
@@ -126,5 +143,22 @@ class SiteController extends Controller
     public function actionAbout()
     {
         return $this->render('about');
+    }
+
+    public function actionTestApi()
+    {
+        try {
+            $data = $this->sofascoreService->getTeamDetails(38);
+        } catch (\Throwable $e) {
+            return 'Ошибка: ' . $e->getMessage();
+        }
+
+        return '<pre>' . print_r($data, true) . '</pre>';
+    }
+
+    public function actionPlayers()
+    {
+        // Старая страница переехала в PlayerController/index
+        return $this->redirect(array_merge(['player/index'], Yii::$app->request->get()));
     }
 }

@@ -29,6 +29,16 @@ $config = [
                 ],
             ],
         ],
+        'sofascore' => [
+            'class' => 'yii\httpclient\Client',
+            'baseUrl' => 'https://sofascore.p.rapidapi.com',
+            'requestConfig' => [
+                'headers' => [
+                    'x-rapidapi-key' => $_ENV['X_RAPIDAPI_KEY'] ?? '',
+                    'x-rapidapi-host' => $_ENV['X_RAPIDAPI_HOST'] ?? '',
+                ],
+            ],
+        ],
         'cache' => [
             'class' => 'yii\caching\FileCache',
         ],
@@ -61,8 +71,7 @@ $config = [
         'urlManager' => [
             'enablePrettyUrl' => true,
             'showScriptName' => false,
-            'rules' => [
-            ],
+            'rules' => [],
         ],
     ],
     'params' => $params,
