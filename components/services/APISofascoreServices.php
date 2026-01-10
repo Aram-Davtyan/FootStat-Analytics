@@ -22,6 +22,139 @@ class APISofascoreServices
         return $this->repository->get('players/detail', ['playerId' => $playerId]);
     }
 
+    public function getPlayerImage($playerId): array
+    {
+        return $this->repository->get('players/get-image', ['playerId' => $playerId]);
+    }
+
+    public function getPlayerCharacteristics($playerId): array
+    {
+        return $this->repository->get('players/get-characteristics', ['playerId' => $playerId]);
+    }
+
+    /**
+     * Рейтинги игрока. Для корректного ответа нужны tournamentId и seasonId.
+     * Если не переданы, возвращаем пустой массив, чтобы не бить 400 от API.
+     */
+    public function getPlayerRatings(int $playerId, ?int $tournamentId = null, ?int $seasonId = null): array
+    {
+        if ($tournamentId === null || $seasonId === null) {
+            return [];
+        }
+
+        return $this->repository->get('players/get-ratings', [
+            'playerId' => $playerId,
+            'tournamentId' => $tournamentId,
+            'seasonId' => $seasonId,
+        ]);
+    }
+
+    public function getPlayerAllStatistics($playerId): array
+    {
+        return $this->repository->get('players/get-all-statistics', ['playerId' => $playerId]);
+    }
+
+    public function getPlayerStatistics($playerId): array
+    {
+        return $this->repository->get('players/get-statistics', ['playerId' => $playerId]);
+    }
+
+    public function getPlayerStatisticsSeasons($playerId): array
+    {
+        return $this->repository->get('players/get-statistics-seasons', ['playerId' => $playerId]);
+    }
+
+    public function getPlayerTransferHistory($playerId): array
+    {
+        return $this->repository->get('players/get-transfer-history', ['playerId' => $playerId]);
+    }
+
+    public function getPlayerLastMatches($playerId, int $limit = 5): array
+    {
+        return $this->repository->get('players/get-last-matches', ['playerId' => $playerId, 'n' => $limit]);
+    }
+
+    /**
+     * Собирает профиль игрока из нескольких эндпоинтов Sofascore.
+     */
+    public function getPlayerProfile(int $playerId): array
+    {
+        $profile = [
+            'detail' => [],
+            'image' => null,
+            'characteristics' => [],
+            'ratings' => [],
+            'statisticsSeasons' => [],
+            'allStatistics' => [],
+            'statistics' => [],
+            'transferHistory' => [],
+            'lastMatches' => [],
+            'imageUrl' => null,
+        ];
+
+        $profile['detail'] = $this->getPlayerDetails($playerId);
+
+        try {
+            $profile['image'] = $this->getPlayerImage($playerId);
+        } catch (\Throwable $e) {
+            $profile['image'] = null;
+        }
+
+        try {
+            $profile['characteristics'] = $this->getPlayerCharacteristics($playerId);
+        } catch (\Throwable $e) {
+            $profile['characteristics'] = [];
+        }
+
+        try {
+            $profile['ratings'] = $this->getPlayerRatings($playerId);
+        } catch (\Throwable $e) {
+            $profile['ratings'] = [];
+        }
+
+        try {
+            $profile['statisticsSeasons'] = $this->getPlayerStatisticsSeasons($playerId);
+        } catch (\Throwable $e) {
+            $profile['statisticsSeasons'] = [];
+        }
+
+        try {
+            $profile['allStatistics'] = $this->getPlayerAllStatistics($playerId);
+        } catch (\Throwable $e) {
+            $profile['allStatistics'] = [];
+        }
+
+        try {
+            $profile['statistics'] = $this->getPlayerStatistics($playerId);
+        } catch (\Throwable $e) {
+            $profile['statistics'] = [];
+        }
+
+        try {
+            $profile['transferHistory'] = $this->getPlayerTransferHistory($playerId);
+        } catch (\Throwable $e) {
+            $profile['transferHistory'] = [];
+        }
+
+        try {
+            $profile['lastMatches'] = $this->getPlayerLastMatches($playerId);
+        } catch (\Throwable $e) {
+            $profile['lastMatches'] = [];
+        }
+
+        // Фолбэк для изображения: Sofascore обычно отдаёт по URL /player/{id}/image
+        $profile['imageUrl'] = $profile['image']['image'] ?? $profile['image']['url'] ?? null;
+        if ($profile['imageUrl'] && strpos($profile['imageUrl'], 'http') !== 0) {
+            $profile['imageUrl'] = 'https://api.sofascore.com/api/v1' . $profile['imageUrl'];
+        }
+        if (!$profile['imageUrl'] && $playerId) {
+            // публичный эндпоинт без RapidAPI-хедеров
+            $profile['imageUrl'] = "https://api.sofascore.com/api/v1/player/{$playerId}/image";
+        }
+
+        return $profile;
+    }
+
     /**
      * Детали команды по ID.
      */

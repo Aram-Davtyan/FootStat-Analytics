@@ -59,4 +59,47 @@ class PlayerController extends Controller
             'limit' => $limit,
         ]);
     }
+
+    public function actionView($id)
+    {
+        $playerId = (int)$id;
+        $error = null;
+        $profile = [];
+
+        try {
+            // базовая информация для быстрой отрисовки
+            $detail = $this->sofascoreService->getPlayerDetails($playerId);
+            $image = null;
+            try {
+                $imgResp = $this->sofascoreService->getPlayerImage($playerId);
+                $image = $imgResp['image'] ?? ($imgResp['url'] ?? null);
+            } catch (\Throwable) {
+                $image = null;
+            }
+            $profile = [
+                'detail' => $detail,
+                'imageUrl' => $image,
+            ];
+        } catch (\Throwable $e) {
+            $error = $e->getMessage();
+        }
+
+        return $this->render('view', [
+            'profile' => $profile,
+            'error' => $error,
+            'playerId' => $playerId,
+        ]);
+    }
+
+    public function actionProfileData($id)
+    {
+        Yii::$app->response->format = \yii\web\Response::FORMAT_JSON;
+        $playerId = (int)$id;
+
+        try {
+            return ['success' => true, 'data' => $this->sofascoreService->getPlayerProfile($playerId)];
+        } catch (\Throwable $e) {
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
 }

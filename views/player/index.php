@@ -17,7 +17,7 @@ $this->title = 'Игроки Sofascore';
 ?>
 
 <div class="site-players container py-4">
-    <h1 class="mb-4">Игроки</h1>
+    <h1 class="mb-4">Игроки@</h1>
 
     <div class="card mb-4">
         <div class="card-body">
@@ -84,7 +84,15 @@ $this->title = 'Игроки Sofascore';
                     <?php foreach ($players as $player): ?>
                         <tr>
                             <td><?= Html::encode($player->id ?? '') ?></td>
-                            <td><?= Html::encode($player->name ?? '') ?></td>
+                            <td>
+                                <?php if (!empty($player->id)): ?>
+                                    <a href="<?= Html::encode(Url::to(['player/view', 'id' => $player->id])) ?>">
+                                        <?= Html::encode($player->name ?? '') ?>
+                                    </a>
+                                <?php else: ?>
+                                    <?= Html::encode($player->name ?? '') ?>
+                                <?php endif; ?>
+                            </td>
                             <td><?= Html::encode($player->position ?? '') ?></td>
                             <td><?= Html::encode($player->teamName ?? '') ?></td>
                             <td><?= Html::encode($player->country ?? '') ?></td>

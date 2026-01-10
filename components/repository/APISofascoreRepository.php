@@ -42,7 +42,7 @@ class APISofascoreRepository
             'x-rapidapi-host' => $_ENV['X_RAPIDAPI_HOST'] ? $_ENV['X_RAPIDAPI_HOST'] : '',
         ];
 
-        $response = $this->client
+        $response = $this->client@
             ->createRequest()
             ->setMethod($method)
             ->setUrl($url)
@@ -66,5 +66,13 @@ class APISofascoreRepository
     public function get(string $path, array $query = []): array
     {
         return $this->request('GET', $path, $query);
+    }
+
+    /**
+     * Экспонируем клиент (используем для фолбэков).
+     */
+    public function getClient(): Client
+    {
+        return $this->client;
     }
 }
