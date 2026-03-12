@@ -5,6 +5,7 @@ $db = require __DIR__ . '/db.php';
 
 $config = [
     'id' => 'basic',
+    'name' => 'FootStat',
     'basePath' => dirname(__DIR__),
     'defaultRoute' => 'player/index',
     'bootstrap' => ['log'],

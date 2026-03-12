@@ -142,7 +142,7 @@ a:hover {
 .app-nav .nav-link {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
     padding: 10px 14px;
     border-radius: 12px;
     color: var(--muted);
@@ -153,15 +153,37 @@ a:hover {
     position: relative;
 }
 
-.app-nav .nav-link::before {
-    content: '';
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: rgba(32, 210, 143, 0.8);
-    opacity: 0;
-    box-shadow: 0 0 0 6px rgba(32, 210, 143, 0.12);
-    transition: opacity 0.2s ease;
+.app-nav .nav-label {
+    line-height: 1.15;
+}
+
+.nav-icon {
+    width: 28px;
+    height: 28px;
+    flex: 0 0 28px;
+    border-radius: 9px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(10, 17, 24, 0.85);
+    color: rgba(154, 168, 179, 0.9);
+    display: grid;
+    place-items: center;
+    transition: all 0.2s ease;
+}
+
+.nav-icon svg {
+    width: 17px;
+    height: 17px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.nav-icon .bar {
+    fill: currentColor;
+    stroke: none;
+    opacity: 0.38;
 }
 
 .app-nav .nav-link:hover,
@@ -172,9 +194,21 @@ a:hover {
     box-shadow: var(--glow);
 }
 
-.app-nav .nav-link:hover::before,
-.app-nav .nav-link.active::before {
-    opacity: 1;
+.app-nav .nav-link:hover .nav-icon,
+.app-nav .nav-link.active .nav-icon {
+    color: var(--accent-strong);
+    border-color: rgba(32, 210, 143, 0.45);
+    background: linear-gradient(145deg, rgba(32, 210, 143, 0.17), rgba(13, 22, 31, 0.95));
+    box-shadow: inset 0 0 0 1px rgba(32, 210, 143, 0.12), 0 12px 22px rgba(32, 210, 143, 0.14);
+}
+
+.app-nav .nav-link:hover .nav-icon .bar,
+.app-nav .nav-link.active .nav-icon .bar {
+    opacity: 0.55;
+}
+
+.nav-icon--chart svg path:last-child {
+    opacity: 0.82;
 }
 
 .app-sidebar-footer {
@@ -573,12 +607,12 @@ a.desc:after {
     body.app-body {
         height: auto;
         overflow: auto;
+        background: #0b1118;
     }
 
     body.app-body::before,
     body.app-body::after {
-        position: absolute;
-        inset: 0;
+        content: none;
     }
 
     .app-shell {
@@ -703,10 +737,6 @@ a.desc:after {
         padding: 10px 14px;
         border-radius: 12px;
         font-size: 0.95rem;
-    }
-
-    .app-nav .nav-link::before {
-        display: inline-block;
     }
 
     .app-sidebar-footer {
