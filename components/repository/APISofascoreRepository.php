@@ -1,4 +1,4 @@
-<?php 
+<?php
 
 namespace app\components\repository;
 
@@ -7,49 +7,43 @@ use yii\httpclient\Client;
 use yii\httpclient\Exception as HttpClientException;
 
 /**
- * Работает с HTTP-клиентом sofascore: отправка запросов, разбор ошибок.
+ * Репозиторий HTTP-доступа к Sofascore API.
  */
 class APISofascoreRepository
 {
+    /**
+     * HTTP-клиент Yii.
+     */
     private Client $client;
 
+    /**
+     * @param Client|null $client внешний клиент для тестов.
+     */
     public function __construct(?Client $client = null)
     {
-        $this->client = $client ?: Yii::$app->get('sofascore');
+        $this->client = $client ?? Yii::$app->get('sofascore');
     }
 
     /**
-        * Универсальный метод запроса.
-        *
-        * @param string $method HTTP-метод (GET/POST/...)
-        * @param string $path   Путь относительно baseUrl клиента
-        * @param array $data    Параметры запроса (query/body)
-        * @return array
-        * @throws \RuntimeException|HttpClientException
-        */
+     * Выполняет HTTP-запрос к API и возвращает декодированный массив.
+     *
+     * @param string $method HTTP-метод запроса.
+     * @param string $path путь относительно `baseUrl` или полный URL.
+     * @param array<string, mixed> $data query/body параметры.
+     * @return array<string, mixed>
+     * @throws HttpClientException
+     */
     public function request(string $method, string $path, array $data = []): array
     {
-         // Собираем абсолютный URL, даже если baseUrl компонента не задан
-        $cleanPath = ltrim($path, '/');
-        $base = $this->client->baseUrl ?: 'https://sofascore.p.rapidapi.com';
-        $url = (strpos($cleanPath, 'http://') === 0 || strpos($cleanPath, 'https://') === 0)
-            ? $cleanPath
-            : rtrim($base, '/') . '/' . $cleanPath;
-
-        // Гарантируем наличие auth-заголовков даже если компонент сконфигурирован не полностью
-        $authHeaders = [
-            'x-rapidapi-key' => $_ENV['X_RAPIDAPI_KEY'] ? $_ENV['X_RAPIDAPI_KEY'] : '',
-            'x-rapidapi-host' => $_ENV['X_RAPIDAPI_HOST'] ? $_ENV['X_RAPIDAPI_HOST'] : '',
-        ];
-
-        $response = $this->client@
+        $url = $this->buildUrl($path);
+        $request = $this->client
             ->createRequest()
             ->setMethod($method)
             ->setUrl($url)
-            ->addHeaders($authHeaders)
-            ->setData($data)
-            ->send();
+            ->addHeaders($this->buildAuthHeaders())
+            ->setData($data);
 
+        $response = $request->send();
         if (!$response->isOk) {
             $body = $response->getContent();
             throw new \RuntimeException("Sofascore API error ({$response->statusCode}): {$body}");
@@ -63,16 +57,46 @@ class APISofascoreRepository
         return $decoded;
     }
 
+    /**
+     * Выполняет GET-запрос.
+     *
+     * @param string $path путь запроса.
+     * @param array<string, mixed> $query query-параметры.
+     * @return array<string, mixed>
+     * @throws HttpClientException
+     */
     public function get(string $path, array $query = []): array
     {
         return $this->request('GET', $path, $query);
     }
 
     /**
-     * Экспонируем клиент (используем для фолбэков).
+     * Формирует абсолютный URL запроса.
+     *
+     * @param string $path путь или абсолютный URL.
      */
-    public function getClient(): Client
+    private function buildUrl(string $path): string
     {
-        return $this->client;
+        $cleanPath = ltrim($path, '/');
+        if (strpos($cleanPath, 'http://') === 0 || strpos($cleanPath, 'https://') === 0) {
+            return $cleanPath;
+        }
+
+        $base = $this->client->baseUrl ?: 'https://sofascore.p.rapidapi.com';
+
+        return rtrim($base, '/') . '/' . $cleanPath;
+    }
+
+    /**
+     * Формирует заголовки авторизации RapidAPI.
+     *
+     * @return array<string, string>
+     */
+    private function buildAuthHeaders(): array
+    {
+        return [
+            'x-rapidapi-key' => $_ENV['X_RAPIDAPI_KEY'] ?? '',
+            'x-rapidapi-host' => $_ENV['X_RAPIDAPI_HOST'] ?? '',
+        ];
     }
 }

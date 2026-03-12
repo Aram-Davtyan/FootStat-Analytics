@@ -8,7 +8,6 @@ use app\widgets\Alert;
 use yii\bootstrap5\Breadcrumbs;
 use yii\bootstrap5\Html;
 use yii\bootstrap5\Nav;
-use yii\bootstrap5\NavBar;
 
 AppAsset::register($this);
 
@@ -18,62 +17,82 @@ $this->registerMetaTag(['name' => 'viewport', 'content' => 'width=device-width, 
 $this->registerMetaTag(['name' => 'description', 'content' => $this->params['meta_description'] ?? '']);
 $this->registerMetaTag(['name' => 'keywords', 'content' => $this->params['meta_keywords'] ?? '']);
 $this->registerLinkTag(['rel' => 'icon', 'type' => 'image/x-icon', 'href' => Yii::getAlias('@web/favicon.ico')]);
+
+$pageTitle = $this->title ?: Yii::$app->name;
 ?>
 <?php $this->beginPage() ?>
 <!DOCTYPE html>
 <html lang="<?= Yii::$app->language ?>" class="h-100">
 <head>
-    <title><?= Html::encode($this->title) ?></title>
+    <title><?= Html::encode($pageTitle) ?></title>
     <?php $this->head() ?>
 </head>
-<body class="d-flex flex-column h-100">
+<body class="app-body">
 <?php $this->beginBody() ?>
 
-<header id="header">
-    <?php
-    NavBar::begin([
-        'brandLabel' => Yii::$app->name,
-        'brandUrl' => Yii::$app->homeUrl,
-        'options' => ['class' => 'navbar-expand-md navbar-dark bg-dark fixed-top']
-    ]);
-    echo Nav::widget([
-        'options' => ['class' => 'navbar-nav'],
-        'items' => [
-            ['label' => 'Игроки', 'url' => ['/site/players']],
-            Yii::$app->user->isGuest
-                ? ['label' => 'Войти', 'url' => ['/site/login']]
-                : '<li class="nav-item">'
-                    . Html::beginForm(['/site/logout'])
-                    . Html::submitButton(
-                        'Выйти (' . Yii::$app->user->identity->username . ')',
-                        ['class' => 'nav-link btn btn-link logout']
-                    )
-                    . Html::endForm()
-                    . '</li>'
-        ]
-    ]);
-    NavBar::end();
-    ?>
-</header>
+<input type="checkbox" id="nav-toggle" class="nav-toggle" aria-hidden="true">
 
-<main id="main" class="flex-shrink-0" role="main">
-    <div class="container">
-        <?php if (!empty($this->params['breadcrumbs'])): ?>
-            <?= Breadcrumbs::widget(['links' => $this->params['breadcrumbs']]) ?>
-        <?php endif ?>
-        <?= Alert::widget() ?>
-        <?= $content ?>
-    </div>
-</main>
-
-<footer id="footer" class="mt-auto py-3 bg-light">
-    <div class="container">
-        <div class="row text-muted">
-            <div class="col-md-6 text-center text-md-start">&copy; My Company <?= date('Y') ?></div>
-            <div class="col-md-6 text-center text-md-end"><?= Yii::powered() ?></div>
+<div class="app-shell">
+    <label for="nav-toggle" class="nav-overlay" aria-hidden="true"></label>
+    <aside class="app-sidebar">
+        <div class="sidebar-brand">
+            <div class="brand-mark">SC</div>
+            <div class="brand-text">
+                <div class="brand-title"><?= Html::encode(Yii::$app->name) ?></div>
+                <div class="brand-subtitle">Sofascore dashboard</div>
+            </div>
         </div>
+
+        <?= Nav::widget([
+            'options' => ['class' => 'nav app-nav flex-column'],
+            'items' => [
+                ['label' => 'Игроки', 'url' => ['/player/index']],
+                ['label' => 'Избранные', 'url' => ['/player/favorites']],
+            ],
+        ]) ?>
+
+        <div class="app-sidebar-footer">
+            <?php if (Yii::$app->user->isGuest): ?>
+                <?= Html::a('Войти', ['/site/login'], ['class' => 'app-nav-link']) ?>
+            <?php else: ?>
+                <?= Html::beginForm(['/site/logout'], 'post', ['class' => 'app-logout']) ?>
+                <?= Html::submitButton(
+                    'Выйти (' . Html::encode(Yii::$app->user->identity->username) . ')',
+                    ['class' => 'app-logout-btn']
+                ) ?>
+                <?= Html::endForm() ?>
+            <?php endif; ?>
+        </div>
+    </aside>
+
+    <div class="app-main">
+        <header class="mobile-topbar" aria-label="Панель навигации">
+            <label for="nav-toggle" class="burger-btn" aria-label="Открыть меню">
+                <span></span>
+                <span></span>
+                <span></span>
+            </label>
+            <div class="mobile-logo">SC</div>
+            <div class="mobile-brand">
+                <div class="mobile-title">Dashboard</div>
+                <div class="mobile-subtitle">Sofascore</div>
+            </div>
+        </header>
+
+        <main id="main" class="app-content" role="main">
+            <div class="content-wrap">
+                <?php if (!empty($this->params['breadcrumbs'])): ?>
+                    <?= Breadcrumbs::widget([
+                        'links' => $this->params['breadcrumbs'],
+                        'options' => ['class' => 'app-breadcrumbs'],
+                    ]) ?>
+                <?php endif ?>
+                <?= Alert::widget() ?>
+                <?= $content ?>
+            </div>
+        </main>
     </div>
-</footer>
+</div>
 
 <?php $this->endBody() ?>
 </body>

@@ -3,10 +3,13 @@
 use yii\db\Migration;
 
 /**
- * Handles the creation of table `user` and seeds default accounts.
+ * Создает таблицу пользователей и добавляет базовые аккаунты.
  */
 class m240825_000001_create_user_table extends Migration
 {
+    /**
+     * Применяет миграцию создания таблицы `user`.
+     */
     public function safeUp()
     {
         $this->createTable('{{%user}}', [
@@ -43,6 +46,9 @@ class m240825_000001_create_user_table extends Migration
         $this->batchInsert('{{%user}}', array_keys($users[0]), $users);
     }
 
+    /**
+     * Откатывает миграцию таблицы `user`.
+     */
     public function safeDown()
     {
         $this->dropTable('{{%user}}');

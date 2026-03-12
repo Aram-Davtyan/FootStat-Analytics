@@ -1,32 +1,32 @@
 <?php
-/**
- * @link https://www.yiiframework.com/
- * @copyright Copyright (c) 2008 Yii Software LLC
- * @license https://www.yiiframework.com/license/
- */
 
 namespace app\assets;
 
 use yii\web\AssetBundle;
 
 /**
- * Main application asset bundle.
- *
- * @author Qiang Xue <qiang.xue@gmail.com>
- * @since 2.0
+ * Основной asset bundle приложения.
  */
 class AppAsset extends AssetBundle
 {
+    /** @var string Базовый путь к статическим файлам. */
     public $basePath = '@webroot';
+
+    /** @var string Базовый URL к статическим файлам. */
     public $baseUrl = '@web';
+
+    /** @var string[] CSS-файлы, подключаемые на всех страницах. */
     public $css = [
         'css/site.css',
     ];
-    public $js = [
-    ];
+
+    /** @var string[] JS-файлы, подключаемые на всех страницах. */
+    public $js = [];
+
+    /** @var string[] Зависимости от других asset bundle. */
     public $depends = [
-        'yii\web\YiiAsset',
-        'yii\bootstrap5\BootstrapAsset',
-        'yii\bootstrap5\BootstrapPluginAsset',
+        'yii\\web\\YiiAsset',
+        'yii\\bootstrap5\\BootstrapAsset',
+        'yii\\bootstrap5\\BootstrapPluginAsset',
     ];
 }

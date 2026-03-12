@@ -2,39 +2,67 @@
 
 namespace app\components\services;
 
-use app\components\repository\APISofascoreRepository;
 use app\components\DTO\PlayerSofascoreDTO;
+use app\components\repository\APISofascoreRepository;
 
+/**
+ * Сервисный слой для агрегации и нормализации данных Sofascore API.
+ */
 class APISofascoreServices
 {
+    /**
+     * Репозиторий HTTP-запросов к API.
+     */
     private APISofascoreRepository $repository;
 
+    /**
+     * @param APISofascoreRepository|null $repository подмена репозитория для тестов.
+     */
     public function __construct(?APISofascoreRepository $repository = null)
     {
-        $this->repository = $repository ?: new APISofascoreRepository();
+        $this->repository = $repository ?? new APISofascoreRepository();
     }
 
     /**
-     * Метод для получения деталей игрока по его ID.
+     * Возвращает детальные данные игрока по идентификатору.
+     *
+     * @param int $playerId идентификатор игрока.
+     * @return array<string, mixed>
      */
-    public function getPlayerDetails($playerId): array
+    public function getPlayerDetails(int $playerId): array
     {
         return $this->repository->get('players/detail', ['playerId' => $playerId]);
     }
 
-    public function getPlayerImage($playerId): array
+    /**
+     * Возвращает информацию об изображении игрока.
+     *
+     * @param int $playerId идентификатор игрока.
+     * @return array<string, mixed>
+     */
+    public function getPlayerImage(int $playerId): array
     {
         return $this->repository->get('players/get-image', ['playerId' => $playerId]);
     }
 
-    public function getPlayerCharacteristics($playerId): array
+    /**
+     * Возвращает характеристики игрока.
+     *
+     * @param int $playerId идентификатор игрока.
+     * @return array<string, mixed>
+     */
+    public function getPlayerCharacteristics(int $playerId): array
     {
         return $this->repository->get('players/get-characteristics', ['playerId' => $playerId]);
     }
 
     /**
-     * Рейтинги игрока. Для корректного ответа нужны tournamentId и seasonId.
-     * Если не переданы, возвращаем пустой массив, чтобы не бить 400 от API.
+     * Возвращает рейтинги игрока.
+     *
+     * @param int $playerId идентификатор игрока.
+     * @param int|null $tournamentId идентификатор турнира.
+     * @param int|null $seasonId идентификатор сезона.
+     * @return array<string, mixed>
      */
     public function getPlayerRatings(int $playerId, ?int $tournamentId = null, ?int $seasonId = null): array
     {
@@ -49,127 +77,142 @@ class APISofascoreServices
         ]);
     }
 
-    public function getPlayerAllStatistics($playerId): array
+    /**
+     * Возвращает всю агрегированную статистику игрока.
+     *
+     * @param int $playerId идентификатор игрока.
+     * @return array<string, mixed>
+     */
+    public function getPlayerAllStatistics(int $playerId): array
     {
         return $this->repository->get('players/get-all-statistics', ['playerId' => $playerId]);
     }
 
-    public function getPlayerStatistics($playerId): array
+    /**
+     * Возвращает статистику игрока по турнирам.
+     *
+     * @param int $playerId идентификатор игрока.
+     * @return array<string, mixed>
+     */
+    public function getPlayerStatistics(int $playerId): array
     {
         return $this->repository->get('players/get-statistics', ['playerId' => $playerId]);
     }
 
-    public function getPlayerStatisticsSeasons($playerId): array
+    /**
+     * Возвращает статистику игрока по сезонам.
+     *
+     * @param int $playerId идентификатор игрока.
+     * @return array<string, mixed>
+     */
+    public function getPlayerStatisticsSeasons(int $playerId): array
     {
         return $this->repository->get('players/get-statistics-seasons', ['playerId' => $playerId]);
     }
 
-    public function getPlayerTransferHistory($playerId): array
+    /**
+     * Возвращает историю трансферов игрока.
+     *
+     * @param int $playerId идентификатор игрока.
+     * @return array<string, mixed>
+     */
+    public function getPlayerTransferHistory(int $playerId): array
     {
         return $this->repository->get('players/get-transfer-history', ['playerId' => $playerId]);
     }
 
-    public function getPlayerLastMatches($playerId, int $limit = 5): array
+    /**
+     * Возвращает последние матчи игрока.
+     *
+     * @param int $playerId идентификатор игрока.
+     * @param int $limit максимальное число матчей.
+     * @return array<string, mixed>
+     */
+    public function getPlayerLastMatches(int $playerId, int $limit = 5): array
     {
-        return $this->repository->get('players/get-last-matches', ['playerId' => $playerId, 'n' => $limit]);
+        return $this->repository->get('players/get-last-matches', [
+            'playerId' => $playerId,
+            'n' => max(1, $limit),
+        ]);
     }
 
     /**
-     * Собирает профиль игрока из нескольких эндпоинтов Sofascore.
+     * Возвращает статистику игрока в конкретном матче.
+     *
+     * @param int $matchId идентификатор матча.
+     * @param int $playerId идентификатор игрока.
+     * @return array<string, mixed>
+     */
+    public function getMatchPlayerStatistics(int $matchId, int $playerId): array
+    {
+        return $this->repository->get('matches/get-player-statistics', [
+            'matchId' => $matchId,
+            'playerId' => $playerId,
+        ]);
+    }
+
+    /**
+     * Собирает профиль игрока из нескольких API-эндпоинтов.
+     *
+     * @param int $playerId идентификатор игрока.
+     * @return array<string, mixed>
      */
     public function getPlayerProfile(int $playerId): array
     {
         $profile = [
-            'detail' => [],
-            'image' => null,
-            'characteristics' => [],
+            'detail' => $this->getPlayerDetails($playerId),
+            'image' => $this->safeFetch(function () use ($playerId): array {
+                return $this->getPlayerImage($playerId);
+            }),
+            'characteristics' => $this->safeFetch(function () use ($playerId): array {
+                return $this->getPlayerCharacteristics($playerId);
+            }),
+            'statisticsSeasons' => $this->safeFetch(function () use ($playerId): array {
+                return $this->getPlayerStatisticsSeasons($playerId);
+            }),
+            'allStatistics' => $this->safeFetch(function () use ($playerId): array {
+                return $this->getPlayerAllStatistics($playerId);
+            }),
+            'statistics' => $this->safeFetch(function () use ($playerId): array {
+                return $this->getPlayerStatistics($playerId);
+            }),
+            'transferHistory' => $this->safeFetch(function () use ($playerId): array {
+                return $this->getPlayerTransferHistory($playerId);
+            }),
+            'lastMatches' => $this->safeFetch(function () use ($playerId): array {
+                return $this->getPlayerLastMatches($playerId);
+            }),
             'ratings' => [],
-            'statisticsSeasons' => [],
-            'allStatistics' => [],
-            'statistics' => [],
-            'transferHistory' => [],
-            'lastMatches' => [],
             'imageUrl' => null,
         ];
 
-        $profile['detail'] = $this->getPlayerDetails($playerId);
-
-        try {
-            $profile['image'] = $this->getPlayerImage($playerId);
-        } catch (\Throwable $e) {
-            $profile['image'] = null;
+        list($tournamentId, $seasonId) = $this->extractRatingContext($profile['allStatistics']);
+        if ($tournamentId !== null && $seasonId !== null) {
+            $profile['ratings'] = $this->safeFetch(function () use ($playerId, $tournamentId, $seasonId): array {
+                return $this->getPlayerRatings($playerId, $tournamentId, $seasonId);
+            });
         }
 
-        try {
-            $profile['characteristics'] = $this->getPlayerCharacteristics($playerId);
-        } catch (\Throwable $e) {
-            $profile['characteristics'] = [];
-        }
-
-        try {
-            $profile['ratings'] = $this->getPlayerRatings($playerId);
-        } catch (\Throwable $e) {
-            $profile['ratings'] = [];
-        }
-
-        try {
-            $profile['statisticsSeasons'] = $this->getPlayerStatisticsSeasons($playerId);
-        } catch (\Throwable $e) {
-            $profile['statisticsSeasons'] = [];
-        }
-
-        try {
-            $profile['allStatistics'] = $this->getPlayerAllStatistics($playerId);
-        } catch (\Throwable $e) {
-            $profile['allStatistics'] = [];
-        }
-
-        try {
-            $profile['statistics'] = $this->getPlayerStatistics($playerId);
-        } catch (\Throwable $e) {
-            $profile['statistics'] = [];
-        }
-
-        try {
-            $profile['transferHistory'] = $this->getPlayerTransferHistory($playerId);
-        } catch (\Throwable $e) {
-            $profile['transferHistory'] = [];
-        }
-
-        try {
-            $profile['lastMatches'] = $this->getPlayerLastMatches($playerId);
-        } catch (\Throwable $e) {
-            $profile['lastMatches'] = [];
-        }
-
-        // Фолбэк для изображения: Sofascore обычно отдаёт по URL /player/{id}/image
-        $profile['imageUrl'] = $profile['image']['image'] ?? $profile['image']['url'] ?? null;
-        if ($profile['imageUrl'] && strpos($profile['imageUrl'], 'http') !== 0) {
-            $profile['imageUrl'] = 'https://api.sofascore.com/api/v1' . $profile['imageUrl'];
-        }
-        if (!$profile['imageUrl'] && $playerId) {
-            // публичный эндпоинт без RapidAPI-хедеров
-            $profile['imageUrl'] = "https://api.sofascore.com/api/v1/player/{$playerId}/image";
-        }
+        $rawImageUrl = $profile['image']['image'] ?? ($profile['image']['url'] ?? null);
+        $profile['imageUrl'] = $this->normalizeImageUrl(
+            is_string($rawImageUrl) ? $rawImageUrl : null,
+            $playerId
+        );
 
         return $profile;
     }
 
     /**
-     * Детали команды по ID.
-     */
-    public function getTeamDetails(int $teamId): array
-    {
-        return $this->repository->get('teams/detail', ['teamId' => $teamId]);
-    }
-
-    /**
-     * Поиск игроков по строке (имя/фамилия).
-     * Возвращает массив игроков из общего поиска.
+     * Выполняет поиск игроков и возвращает DTO-коллекцию.
+     *
+     * @param string $query поисковая строка.
+     * @param int $limit максимальное число элементов.
+     * @return PlayerSofascoreDTO[]
      */
     public function searchPlayers(string $query, int $limit = 20): array
     {
-        if (trim($query) === '') {
+        $query = trim($query);
+        if ($query === '') {
             return [];
         }
 
@@ -180,14 +223,22 @@ class APISofascoreServices
         ]);
 
         $results = $data['results'] ?? [];
+        $limitedResults = array_slice($results, 0, max(1, $limit));
 
-        return array_map(static function ($item) {
+        return array_map(static function (array $item): PlayerSofascoreDTO {
             return PlayerSofascoreDTO::fromApi($item);
-        }, $results);
+        }, $limitedResults);
     }
 
     /**
-     * Возвращает игроков, применяя локальные фильтры и подготавливая списки позиций/стран.
+     * Ищет игроков и применяет локальные фильтры (страна, позиция, команда).
+     *
+     * @param string $query поисковая строка.
+     * @param string|null $country фильтр по стране.
+     * @param string|null $position фильтр по позиции.
+     * @param int|null $teamId фильтр по идентификатору команды.
+     * @param int $limit максимум игроков в поисковой выдаче.
+     * @return array<string, array>
      */
     public function getPlayersWithFilters(
         string $query,
@@ -207,9 +258,12 @@ class APISofascoreServices
 
         $players = $this->searchPlayers($query, $limit);
 
-        $filtered = array_values(array_filter($players, static function (PlayerSofascoreDTO $player) use ($country, $position, $teamId) {
-            return $player->matchesFilters($country, $position, $teamId);
-        }));
+        $filtered = array_values(array_filter(
+            $players,
+            static function (PlayerSofascoreDTO $player) use ($country, $position, $teamId): bool {
+                return $player->matchesFilters($country, $position, $teamId);
+            }
+        ));
 
         $positions = [];
         $countries = [];
@@ -221,8 +275,10 @@ class APISofascoreServices
                 $countries[] = $player->country;
             }
         }
+
         $positions = array_values(array_unique($positions));
         sort($positions);
+
         $countries = array_values(array_unique($countries));
         sort($countries);
 
@@ -234,11 +290,63 @@ class APISofascoreServices
     }
 
     /**
-     * Универсальный метод для новых эндпоинтов Sofascore.
-     * Пример: $service->fetch('api/v1/team/123/players', ['page' => 1]);
+     * Безопасно выполняет вызов API и возвращает fallback при исключении.
+     *
+     * @param callable $callback функция, возвращающая массив данных.
+     * @param array<string, mixed> $fallback данные по умолчанию.
+     * @return array<string, mixed>
      */
-    public function fetch(string $path, array $query = []): array
+    private function safeFetch(callable $callback, array $fallback = []): array
     {
-        return $this->repository->get($path, $query);
+        try {
+            $result = $callback();
+
+            return is_array($result) ? $result : $fallback;
+        } catch (\Throwable $e) {
+            return $fallback;
+        }
+    }
+
+    /**
+     * Извлекает идентификаторы турнира и сезона для запроса рейтингов.
+     *
+     * @param array<string, mixed> $allStatistics полный блок статистики.
+     * @return array{0:int|null,1:int|null}
+     */
+    private function extractRatingContext(array $allStatistics): array
+    {
+        $seasons = $allStatistics['seasons'] ?? [];
+        if (!is_array($seasons) || $seasons === []) {
+            return [null, null];
+        }
+
+        $firstSeason = $seasons[0] ?? [];
+        $tournamentId = isset($firstSeason['uniqueTournament']['id'])
+            ? (int) $firstSeason['uniqueTournament']['id']
+            : null;
+        $seasonId = isset($firstSeason['season']['id'])
+            ? (int) $firstSeason['season']['id']
+            : null;
+
+        return [$tournamentId, $seasonId];
+    }
+
+    /**
+     * Нормализует URL изображения и подставляет публичный fallback.
+     *
+     * @param string|null $rawImageUrl URL, полученный из API.
+     * @param int $playerId идентификатор игрока.
+     */
+    private function normalizeImageUrl(?string $rawImageUrl, int $playerId): string
+    {
+        if ($rawImageUrl !== null && $rawImageUrl !== '') {
+            if (strpos($rawImageUrl, 'http') === 0) {
+                return $rawImageUrl;
+            }
+
+            return 'https://api.sofascore.com/api/v1' . $rawImageUrl;
+        }
+
+        return "https://api.sofascore.com/api/v1/player/{$playerId}/image";
     }
 }

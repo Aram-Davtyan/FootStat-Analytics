@@ -2,21 +2,24 @@
 
 namespace app\controllers;
 
+use app\models\LoginForm;
 use Yii;
 use yii\filters\AccessControl;
+use yii\filters\VerbFilter;
 use yii\web\Controller;
 use yii\web\Response;
-use yii\filters\VerbFilter;
-use app\models\LoginForm;
-use app\models\ContactForm;
-use app\components\services\APISofascoreServices;
 
+/**
+ * Контроллер базовой навигации приложения и аутентификации.
+ */
 class SiteController extends Controller
 {
     /**
-     * {@inheritdoc}
+     * Настраивает правила доступа и HTTP-методы.
+     *
+     * @return array<string, mixed>
      */
-    public function behaviors()
+    public function behaviors(): array
     {
         return [
             'access' => [
@@ -42,75 +45,58 @@ class SiteController extends Controller
     }
 
     /**
-     * {@inheritdoc}
+     * Регистрирует встроенные действия Yii (ошибка/капча).
+     *
+     * @return array<string, mixed>
      */
-    public function actions()
+    public function actions(): array
     {
         return [
             'error' => [
-                'class' => 'yii\web\ErrorAction',
+                'class' => 'yii\\web\\ErrorAction',
             ],
             'captcha' => [
-                'class' => 'yii\captcha\CaptchaAction',
+                'class' => 'yii\\captcha\\CaptchaAction',
                 'fixedVerifyCode' => YII_ENV_TEST ? 'testme' : null,
             ],
         ];
     }
-    /**
-     * @param $id
-     * @param $module
-     * @param array $config
-     * @param APISofascoreServices|null $sofascoreService
-     */
-    public function __construct(
-        $id,
-        $module,
-        $config = [],
-        protected ?APISofascoreServices $sofascoreService = null
-    ) {
-        $this->sofascoreService ??= new APISofascoreServices();
-        parent::__construct($id, $module, $config);
-    }
-
 
     /**
-     * Displays homepage.
-     *
-     * @return string
+     * Перенаправляет главную страницу на раздел игроков.
      */
-    public function actionIndex()
+    public function actionIndex(): Response
     {
-        return $this->render('index');
+        return $this->redirect(['player/index']);
     }
 
     /**
-     * Login action.
+     * Выполняет вход пользователя.
      *
      * @return Response|string
      */
     public function actionLogin()
     {
         if (!Yii::$app->user->isGuest) {
-            return $this->goHome();
+            return $this->redirect(['player/index']);
         }
 
         $model = new LoginForm();
         if ($model->load(Yii::$app->request->post()) && $model->login()) {
-            return $this->goBack();
+            return $this->redirect(['player/index']);
         }
 
         $model->password = '';
+
         return $this->render('login', [
             'model' => $model,
         ]);
     }
 
     /**
-     * Logout action.
-     *
-     * @return Response
+     * Выполняет выход и возвращает пользователя на домашнюю страницу.
      */
-    public function actionLogout()
+    public function actionLogout(): Response
     {
         Yii::$app->user->logout();
 
@@ -118,47 +104,26 @@ class SiteController extends Controller
     }
 
     /**
-     * Displays contact page.
-     *
-     * @return Response|string
+     * Поддерживает старый URL контактов, перенаправляя в раздел игроков.
      */
-    public function actionContact()
+    public function actionContact(): Response
     {
-        $model = new ContactForm();
-        if ($model->load(Yii::$app->request->post()) && $model->contact(Yii::$app->params['adminEmail'])) {
-            Yii::$app->session->setFlash('contactFormSubmitted');
-
-            return $this->refresh();
-        }
-        return $this->render('contact', [
-            'model' => $model,
-        ]);
+        return $this->redirect(['player/index']);
     }
 
     /**
-     * Displays about page.
-     *
-     * @return string
+     * Поддерживает старый URL "О проекте", перенаправляя в раздел игроков.
      */
-    public function actionAbout()
+    public function actionAbout(): Response
     {
-        return $this->render('about');
+        return $this->redirect(['player/index']);
     }
 
-    public function actionTestApi()
+    /**
+     * Поддерживает старый URL `/site/players` и прокидывает query-параметры.
+     */
+    public function actionPlayers(): Response
     {
-        try {
-            $data = $this->sofascoreService->getTeamDetails(38);
-        } catch (\Throwable $e) {
-            return 'Ошибка: ' . $e->getMessage();
-        }
-
-        return '<pre>' . print_r($data, true) . '</pre>';
-    }
-
-    public function actionPlayers()
-    {
-        // Старая страница переехала в PlayerController/index
         return $this->redirect(array_merge(['player/index'], Yii::$app->request->get()));
     }
 }

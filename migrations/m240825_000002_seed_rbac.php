@@ -3,10 +3,13 @@
 use yii\db\Migration;
 
 /**
- * Базовые роли RBAC и назначение системного админа.
+ * Создает базовые роли RBAC.
  */
 class m240825_000002_seed_rbac extends Migration
 {
+    /**
+     * Добавляет преднастроенные роли в RBAC.
+     */
     public function safeUp()
     {
         $auth = \Yii::$app->authManager;
@@ -25,6 +28,9 @@ class m240825_000002_seed_rbac extends Migration
         }
     }
 
+    /**
+     * Удаляет все RBAC-роли и связи.
+     */
     public function safeDown()
     {
         $auth = \Yii::$app->authManager;

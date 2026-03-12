@@ -5,6 +5,7 @@ use yii\helpers\Url;
 
 /** @var array $profile */
 /** @var string|null $error */
+/** @var \app\models\FavoritePlayer|null $favorite */
 
 $detail = $profile['detail'] ?? [];
 $player = $detail['player'] ?? $detail ?? [];
@@ -52,6 +53,21 @@ $this->title = "Профиль: {$name}";
                 <?php if ($age): ?>Возраст: <?= Html::encode($age) ?><?php endif; ?>
                 <?php if ($height): ?> · Рост: <?= Html::encode($height) ?><?php endif; ?>
                 <?php if ($weight): ?> · Вес: <?= Html::encode($weight) ?><?php endif; ?>
+            </div>
+            <div class="mt-3 d-flex flex-wrap gap-2">
+                <?php if ($favorite): ?>
+                    <?= Html::beginForm(['player/sync', 'id' => $playerId], 'post') ?>
+                    <?= Html::submitButton('Обновить статистику', ['class' => 'btn btn-primary btn-sm']) ?>
+                    <?= Html::endForm() ?>
+
+                    <?= Html::beginForm(['player/remove-favorite', 'id' => $playerId], 'post') ?>
+                    <?= Html::submitButton('Удалить из избранных', ['class' => 'btn btn-outline-danger btn-sm']) ?>
+                    <?= Html::endForm() ?>
+                <?php else: ?>
+                    <?= Html::beginForm(['player/add-favorite', 'id' => $playerId], 'post') ?>
+                    <?= Html::submitButton('Добавить в избранные', ['class' => 'btn btn-success btn-sm']) ?>
+                    <?= Html::endForm() ?>
+                <?php endif; ?>
             </div>
         </div>
     </div>

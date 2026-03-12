@@ -8,7 +8,7 @@ use yii\db\ActiveRecord;
 use yii\web\IdentityInterface;
 
 /**
- * User identity stored in the database.
+ * ActiveRecord-модель пользователя, реализующая IdentityInterface.
  *
  * @property int $id
  * @property string $username
@@ -20,12 +20,20 @@ use yii\web\IdentityInterface;
  */
 class User extends ActiveRecord implements IdentityInterface
 {
-    public static function tableName()
+    /**
+     * Возвращает имя таблицы модели.
+     */
+    public static function tableName(): string
     {
         return '{{%user}}';
     }
 
-    public function behaviors()
+    /**
+     * Подключает авто-заполнение `created_at` и `updated_at`.
+     *
+     * @return array<int, string>
+     */
+    public function behaviors(): array
     {
         return [
             TimestampBehavior::class,
@@ -33,7 +41,10 @@ class User extends ActiveRecord implements IdentityInterface
     }
 
     /**
-     * {@inheritdoc}
+     * Находит пользователя по первичному ключу.
+     *
+     * @param int|string $id идентификатор пользователя.
+     * @return static|null
      */
     public static function findIdentity($id)
     {
@@ -41,7 +52,11 @@ class User extends ActiveRecord implements IdentityInterface
     }
 
     /**
-     * {@inheritdoc}
+     * Находит пользователя по access token.
+     *
+     * @param string $token токен доступа.
+     * @param mixed $type не используется, оставлен для сигнатуры интерфейса.
+     * @return static|null
      */
     public static function findIdentityByAccessToken($token, $type = null)
     {
@@ -49,9 +64,9 @@ class User extends ActiveRecord implements IdentityInterface
     }
 
     /**
-     * Finds user by username
+     * Находит пользователя по логину.
      *
-     * @param string $username
+     * @param string $username логин пользователя.
      * @return static|null
      */
     public static function findByUsername($username)
@@ -60,7 +75,7 @@ class User extends ActiveRecord implements IdentityInterface
     }
 
     /**
-     * {@inheritdoc}
+     * Возвращает идентификатор текущей identity-модели.
      */
     public function getId()
     {
@@ -68,28 +83,29 @@ class User extends ActiveRecord implements IdentityInterface
     }
 
     /**
-     * {@inheritdoc}
+     * Возвращает auth key пользователя.
      */
-    public function getAuthKey()
+    public function getAuthKey(): string
     {
         return $this->auth_key;
     }
 
     /**
-     * {@inheritdoc}
+     * Сверяет auth key.
+     *
+     * @param string $authKey ключ для проверки.
      */
-    public function validateAuthKey($authKey)
+    public function validateAuthKey($authKey): bool
     {
         return $this->auth_key === $authKey;
     }
 
     /**
-     * Validates password
+     * Проверяет пароль пользователя.
      *
-     * @param string $password password to validate
-     * @return bool if password provided is valid for current user
+     * @param string $password пароль в открытом виде.
      */
-    public function validatePassword($password)
+    public function validatePassword($password): bool
     {
         return Yii::$app->security->validatePassword($password, $this->password_hash);
     }

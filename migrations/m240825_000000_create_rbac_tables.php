@@ -3,10 +3,13 @@
 use yii\db\Migration;
 
 /**
- * Создает таблицы RBAC, если еще не созданы.
+ * Создает таблицы RBAC, если они еще не созданы.
  */
 class m240825_000000_create_rbac_tables extends Migration
 {
+    /**
+     * Применяет миграцию создания RBAC-структуры.
+     */
     public function safeUp()
     {
         $auth = \Yii::$app->authManager;
@@ -55,6 +58,9 @@ class m240825_000000_create_rbac_tables extends Migration
         $this->addForeignKey('fk-auth_assignment-item_name', $auth->assignmentTable, 'item_name', $auth->itemTable, 'name', 'CASCADE', 'CASCADE');
     }
 
+    /**
+     * Откатывает миграцию RBAC-структуры.
+     */
     public function safeDown()
     {
         $auth = \Yii::$app->authManager;

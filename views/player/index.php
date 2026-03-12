@@ -17,7 +17,7 @@ $this->title = 'Игроки Sofascore';
 ?>
 
 <div class="site-players container py-4">
-    <h1 class="mb-4">Игроки@</h1>
+    <h1 class="mb-4">Игроки</h1>
 
     <div class="card mb-4">
         <div class="card-body">
