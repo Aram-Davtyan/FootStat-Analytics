@@ -4,12 +4,18 @@ namespace app\components\services;
 
 use app\components\DTO\PlayerSofascoreDTO;
 use app\components\repository\APISofascoreRepository;
+use Yii;
 
 /**
  * Сервисный слой для агрегации и нормализации данных Sofascore API.
  */
 class APISofascoreServices
 {
+    /**
+     * Максимум матчей в профиле игрока.
+     */
+    private const PROFILE_LAST_MATCHES_LIMIT = 10;
+
     /**
      * Репозиторий HTTP-запросов к API.
      */
@@ -111,17 +117,6 @@ class APISofascoreServices
     }
 
     /**
-     * Возвращает историю трансферов игрока.
-     *
-     * @param int $playerId идентификатор игрока.
-     * @return array<string, mixed>
-     */
-    public function getPlayerTransferHistory(int $playerId): array
-    {
-        return $this->repository->get('players/get-transfer-history', ['playerId' => $playerId]);
-    }
-
-    /**
      * Возвращает последние матчи игрока.
      *
      * @param int $playerId идентификатор игрока.
@@ -159,45 +154,34 @@ class APISofascoreServices
      */
     public function getPlayerProfile(int $playerId): array
     {
+        $allStatistics = $this->safeFetch(function () use ($playerId): array {
+            return $this->getPlayerAllStatistics($playerId);
+        }, [], 'get-all-statistics');
+
         $profile = [
-            'detail' => $this->getPlayerDetails($playerId),
-            'image' => $this->safeFetch(function () use ($playerId): array {
-                return $this->getPlayerImage($playerId);
-            }),
             'characteristics' => $this->safeFetch(function () use ($playerId): array {
                 return $this->getPlayerCharacteristics($playerId);
-            }),
-            'statisticsSeasons' => $this->safeFetch(function () use ($playerId): array {
-                return $this->getPlayerStatisticsSeasons($playerId);
-            }),
-            'allStatistics' => $this->safeFetch(function () use ($playerId): array {
-                return $this->getPlayerAllStatistics($playerId);
-            }),
-            'statistics' => $this->safeFetch(function () use ($playerId): array {
-                return $this->getPlayerStatistics($playerId);
-            }),
-            'transferHistory' => $this->safeFetch(function () use ($playerId): array {
-                return $this->getPlayerTransferHistory($playerId);
-            }),
+            }, [], 'get-characteristics'),
+            'statisticsSeasons' => [
+                'statisticsSeasons' => $this->extractSeasons($allStatistics),
+            ],
+            'allStatistics' => $allStatistics,
             'lastMatches' => $this->safeFetch(function () use ($playerId): array {
-                return $this->getPlayerLastMatches($playerId);
-            }),
+                return $this->getPlayerLastMatches($playerId, self::PROFILE_LAST_MATCHES_LIMIT);
+            }, [], 'get-last-matches'),
             'ratings' => [],
-            'imageUrl' => null,
         ];
 
-        list($tournamentId, $seasonId) = $this->extractRatingContext($profile['allStatistics']);
+        list($tournamentId, $seasonId) = $this->extractRatingContext($allStatistics);
         if ($tournamentId !== null && $seasonId !== null) {
             $profile['ratings'] = $this->safeFetch(function () use ($playerId, $tournamentId, $seasonId): array {
                 return $this->getPlayerRatings($playerId, $tournamentId, $seasonId);
-            });
+            }, [], 'get-ratings');
         }
 
-        $rawImageUrl = $profile['image']['image'] ?? ($profile['image']['url'] ?? null);
-        $profile['imageUrl'] = $this->normalizeImageUrl(
-            is_string($rawImageUrl) ? $rawImageUrl : null,
-            $playerId
-        );
+        if ($profile['ratings'] === []) {
+            $profile['ratings'] = $this->buildRatingsFromAllStatistics($allStatistics);
+        }
 
         return $profile;
     }
@@ -296,13 +280,20 @@ class APISofascoreServices
      * @param array<string, mixed> $fallback данные по умолчанию.
      * @return array<string, mixed>
      */
-    private function safeFetch(callable $callback, array $fallback = []): array
+    private function safeFetch(callable $callback, array $fallback = [], string $context = ''): array
     {
         try {
             $result = $callback();
 
             return is_array($result) ? $result : $fallback;
         } catch (\Throwable $e) {
+            Yii::warning(
+                'Sofascore request failed'
+                . ($context !== '' ? " ({$context})" : '')
+                . ': ' . $e->getMessage(),
+                __METHOD__
+            );
+
             return $fallback;
         }
     }
@@ -315,38 +306,76 @@ class APISofascoreServices
      */
     private function extractRatingContext(array $allStatistics): array
     {
-        $seasons = $allStatistics['seasons'] ?? [];
-        if (!is_array($seasons) || $seasons === []) {
-            return [null, null];
+        $seasons = $this->extractSeasons($allStatistics);
+        foreach ($seasons as $season) {
+            $tournamentId = isset($season['uniqueTournament']['id'])
+                ? (int) $season['uniqueTournament']['id']
+                : null;
+            $seasonId = isset($season['season']['id'])
+                ? (int) $season['season']['id']
+                : null;
+
+            if ($tournamentId !== null && $seasonId !== null) {
+                return [$tournamentId, $seasonId];
+            }
         }
 
-        $firstSeason = $seasons[0] ?? [];
-        $tournamentId = isset($firstSeason['uniqueTournament']['id'])
-            ? (int) $firstSeason['uniqueTournament']['id']
-            : null;
-        $seasonId = isset($firstSeason['season']['id'])
-            ? (int) $firstSeason['season']['id']
-            : null;
-
-        return [$tournamentId, $seasonId];
+        return [null, null];
     }
 
     /**
-     * Нормализует URL изображения и подставляет публичный fallback.
+     * Возвращает список сезонов из блока allStatistics в единообразной форме.
      *
-     * @param string|null $rawImageUrl URL, полученный из API.
-     * @param int $playerId идентификатор игрока.
+     * @param array<string, mixed> $allStatistics полный блок статистики.
+     * @return array<int, array<string, mixed>>
      */
-    private function normalizeImageUrl(?string $rawImageUrl, int $playerId): string
+    private function extractSeasons(array $allStatistics): array
     {
-        if ($rawImageUrl !== null && $rawImageUrl !== '') {
-            if (strpos($rawImageUrl, 'http') === 0) {
-                return $rawImageUrl;
-            }
-
-            return 'https://api.sofascore.com/api/v1' . $rawImageUrl;
+        $seasons = $allStatistics['seasons'] ?? [];
+        if (!is_array($seasons)) {
+            return [];
         }
 
-        return "https://api.sofascore.com/api/v1/player/{$playerId}/image";
+        return array_values(array_filter($seasons, static function ($row): bool {
+            return is_array($row);
+        }));
     }
+
+    /**
+     * Строит fallback-рейтинги по сезонам, если отдельный endpoint рейтингов пуст.
+     *
+     * @param array<string, mixed> $allStatistics полный блок статистики.
+     * @return array<int, array{name:string,value:float}>
+     */
+    private function buildRatingsFromAllStatistics(array $allStatistics): array
+    {
+        $ratings = [];
+        foreach ($this->extractSeasons($allStatistics) as $season) {
+            $rating = $season['statistics']['rating'] ?? null;
+            if (!is_numeric($rating)) {
+                continue;
+            }
+
+            $tournamentName = (string) ($season['uniqueTournament']['name'] ?? 'Сезон');
+            $seasonName = (string) (
+                $season['season']['year']
+                ?? $season['season']['name']
+                ?? $season['year']
+                ?? ''
+            );
+
+            $label = trim($tournamentName . ' ' . $seasonName);
+            $ratings[] = [
+                'name' => $label !== '' ? $label : 'Сезон',
+                'value' => (float) $rating,
+            ];
+
+            if (count($ratings) >= 8) {
+                break;
+            }
+        }
+
+        return $ratings;
+    }
+
 }

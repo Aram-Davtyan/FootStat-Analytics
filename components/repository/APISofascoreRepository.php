@@ -4,6 +4,7 @@ namespace app\components\repository;
 
 use Yii;
 use yii\httpclient\Client;
+use yii\httpclient\CurlTransport;
 use yii\httpclient\Exception as HttpClientException;
 
 /**
@@ -11,6 +12,16 @@ use yii\httpclient\Exception as HttpClientException;
  */
 class APISofascoreRepository
 {
+    /**
+     * Таймаут TCP-соединения (в секундах).
+     */
+    private const CONNECT_TIMEOUT_SECONDS = 3;
+
+    /**
+     * Полный таймаут HTTP-запроса (в секундах).
+     */
+    private const REQUEST_TIMEOUT_SECONDS = 8;
+
     /**
      * HTTP-клиент Yii.
      */
@@ -41,7 +52,8 @@ class APISofascoreRepository
             ->setMethod($method)
             ->setUrl($url)
             ->addHeaders($this->buildAuthHeaders())
-            ->setData($data);
+            ->setData($data)
+            ->setOptions($this->buildRequestOptions());
 
         $response = $request->send();
         if (!$response->isOk) {
@@ -97,6 +109,26 @@ class APISofascoreRepository
         return [
             'x-rapidapi-key' => $_ENV['X_RAPIDAPI_KEY'] ?? '',
             'x-rapidapi-host' => $_ENV['X_RAPIDAPI_HOST'] ?? '',
+        ];
+    }
+
+    /**
+     * Формирует опции сетевого таймаута под текущий transport.
+     *
+     * @return array<string|int, mixed>
+     */
+    private function buildRequestOptions(): array
+    {
+        $transport = $this->client->getTransport();
+        if ($transport instanceof CurlTransport) {
+            return [
+                'connectTimeout' => self::CONNECT_TIMEOUT_SECONDS,
+                'timeout' => self::REQUEST_TIMEOUT_SECONDS,
+            ];
+        }
+
+        return [
+            'timeout' => self::REQUEST_TIMEOUT_SECONDS,
         ];
     }
 }

@@ -28,7 +28,7 @@ $this->title = 'Избранные игроки';
                     $analytics = $card['analytics'];
                     $forecast = $card['forecast'];
                     $metrics = $analytics['metrics'] ?? [];
-                    $imageUrl = $favorite->image_url ?: ($favorite->player_id ? "https://api.sofascore.com/api/v1/player/{$favorite->player_id}/image" : null);
+                    $imageUrl = $favorite->player_id ? Url::to(['player/image', 'id' => $favorite->player_id]) : null;
                     $minutes = $season->minutes_played ?? null;
                     $needsMatchSync = $card['needsMatchSync'] ?? false;
                 ?>
@@ -38,7 +38,11 @@ $this->title = 'Избранные игроки';
                             <div class="d-flex flex-wrap align-items-center gap-3">
                                 <div class="player-avatar">
                                     <?php if ($imageUrl): ?>
-                                        <img src="<?= Html::encode($imageUrl) ?>" alt="<?= Html::encode($favorite->name) ?>" referrerpolicy="no-referrer">
+                                        <img src="<?= Html::encode($imageUrl) ?>"
+                                             alt="<?= Html::encode($favorite->name) ?>"
+                                             referrerpolicy="no-referrer"
+                                             onerror="this.style.display='none'; this.nextElementSibling.classList.remove('d-none');">
+                                        <span class="d-none"><?= Html::encode(mb_substr($favorite->name, 0, 1)) ?></span>
                                     <?php else: ?>
                                         <span><?= Html::encode(mb_substr($favorite->name, 0, 1)) ?></span>
                                     <?php endif; ?>

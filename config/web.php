@@ -34,6 +34,7 @@ $config = [
         'sofascore' => [
             'class' => 'yii\httpclient\Client',
             'baseUrl' => 'https://sofascore.p.rapidapi.com',
+            'transport' => 'yii\httpclient\CurlTransport',
             'requestConfig' => [
                 'headers' => [
                     'x-rapidapi-key' => $_ENV['X_RAPIDAPI_KEY'] ?? '',
