@@ -157,6 +157,17 @@ $this->title = "Профиль: {$name}";
     <div class="row g-4 mt-2 profile-chart-row">
         <div class="col-12">
             <div class="card shadow-sm h-100">
+                <div class="card-header fw-semibold">Аналитическая оценка эффективности</div>
+                <div class="card-body" data-block="analytics">
+                    <div class="text-muted">Загрузка...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4 mt-2 profile-chart-row">
+        <div class="col-12">
+            <div class="card shadow-sm h-100">
                 <div class="card-header fw-semibold">График рейтинга по годам</div>
                 <div class="card-body" data-block="rating-trend">
                     <div class="text-muted">Загрузка...</div>
@@ -214,13 +225,14 @@ document.addEventListener('DOMContentLoaded', function () {
             renderAttributes(data);
             renderRatings(data);
             renderStats(data);
+            renderAnalytics(data);
             renderRatingTrend(data);
             renderGoalAssistTrend(data);
             renderMatchesTrend(data);
             renderMatches(data);
         })
         .catch(err => {
-            ['attributes','ratings','stats','rating-trend','goal-assist-trend','matches-trend','matches'].forEach(key => {
+            ['attributes','ratings','stats','analytics','rating-trend','goal-assist-trend','matches-trend','matches'].forEach(key => {
                 const el = document.querySelector(`[data-block="${key}"]`);
                 if (el) el.innerHTML = `<div class="text-danger">${escapeHtml(err.message)}</div>`;
             });
@@ -368,6 +380,42 @@ document.addEventListener('DOMContentLoaded', function () {
                     </div>
                 `).join('')}
             </div>
+        `;
+    }
+
+    function renderAnalytics(data) {
+        const box = document.querySelector('[data-block="analytics"]');
+        if (!box) return;
+
+        const analytics = isObject(data.analytics) ? data.analytics : null;
+        const forecast = isObject(data.forecast) ? data.forecast : {};
+        if (!analytics) {
+            box.innerHTML = '<div class="text-muted">Аналитика появится после добавления игрока в избранное и синхронизации статистики.</div>';
+            return;
+        }
+
+        const strengths = asArray(analytics.strengths);
+        const risks = asArray(analytics.risks);
+        const xgi = (isFiniteNumber(forecast.expected_goals) ? Number(forecast.expected_goals) : 0)
+            + (isFiniteNumber(forecast.expected_assists) ? Number(forecast.expected_assists) : 0);
+
+        box.innerHTML = `
+            <div class="profile-kpi-grid">
+                ${renderAnalyticsTile('Индекс эффективности', analytics.index)}
+                ${renderAnalyticsTile('Сезонный вклад', analytics.season_score)}
+                ${renderAnalyticsTile('Форма', analytics.form_score)}
+                ${renderAnalyticsTile('Надежность', analytics.reliability_score)}
+                ${renderAnalyticsTile('Стабильность', analytics.stability_score)}
+                ${renderAnalyticsTile('Прогноз индекса', forecast.predicted_index)}
+            </div>
+            <div class="profile-kpi-grid mt-3">
+                ${renderAnalyticsTile('Взвешенный рейтинг формы', analytics.weighted_recent_rating ?? analytics.rating)}
+                ${renderAnalyticsTile('Тренд формы', formatSignedNumber(analytics.trend_delta))}
+                ${renderAnalyticsTile('Прогноз рейтинга', forecast.predicted_rating)}
+                ${renderAnalyticsTile('Ожидаемое участие в голах', xgi ? xgi.toFixed(2) : '0.00')}
+            </div>
+            ${strengths.length ? `<div class="mt-3"><b>Сильные стороны:</b> ${escapeHtml(strengths.map(item => `${item.label} (${item.contribution})`).join(', '))}</div>` : ''}
+            ${risks.length ? `<div class="text-muted mt-2"><b>Факторы риска:</b> ${escapeHtml(risks.map(item => `${item.label} (${item.contribution})`).join(', '))}</div>` : ''}
         `;
     }
 
@@ -920,6 +968,22 @@ document.addEventListener('DOMContentLoaded', function () {
         if (Math.abs(value) >= 10) return value.toFixed(1).replace(/\.0$/, '');
         if (Math.abs(value) >= 1) return value.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
         return String(value);
+    }
+
+    function formatSignedNumber(value) {
+        if (!isFiniteNumber(value)) return '—';
+        const numeric = Number(value);
+        return `${numeric > 0 ? '+' : ''}${numeric.toFixed(2)}`;
+    }
+
+    function renderAnalyticsTile(label, value) {
+        const display = isFiniteNumber(value) ? formatCompactNumber(Number(value)) : String(value ?? '—');
+        return `
+            <div class="profile-kpi-item">
+                <div class="profile-kpi-label">${escapeHtml(label)}</div>
+                <div class="profile-kpi-value">${escapeHtml(display)}</div>
+            </div>
+        `;
     }
 
     function renderDataTable(headers, rows, options = {}) {

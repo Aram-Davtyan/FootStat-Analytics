@@ -377,5 +377,4 @@ class APISofascoreServices
 
         return $ratings;
     }
-
 }

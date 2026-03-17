@@ -31,6 +31,20 @@ $this->title = 'Избранные игроки';
                     $imageUrl = $favorite->player_id ? Url::to(['player/image', 'id' => $favorite->player_id]) : null;
                     $minutes = $season->minutes_played ?? null;
                     $needsMatchSync = $card['needsMatchSync'] ?? false;
+                    $trendDelta = $analytics['trend_delta'] ?? null;
+                    $trendDeltaLabel = $trendDelta === null
+                        ? '—'
+                        : (($trendDelta > 0 ? '+' : '') . number_format((float) $trendDelta, 2));
+                    $xgiForecast = null;
+                    if (isset($forecast['expected_goals'], $forecast['expected_assists'])) {
+                        $xgiForecast = (float) $forecast['expected_goals'] + (float) $forecast['expected_assists'];
+                    }
+                    $strengthLabels = array_map(static function (array $row): string {
+                        return sprintf('%s (%s)', $row['label'], $row['contribution']);
+                    }, $analytics['strengths'] ?? []);
+                    $riskLabels = array_map(static function (array $row): string {
+                        return sprintf('%s (%s)', $row['label'], $row['contribution']);
+                    }, $analytics['risks'] ?? []);
                 ?>
                 <div class="col-12">
                     <div class="card analytics-card shadow-sm">
@@ -80,35 +94,60 @@ $this->title = 'Избранные игроки';
                                     <div class="alert alert-info mt-4">Матчевые данные не загружены. Нажми «Обновить статистику», чтобы сохранить последние матчи для расчета формы.</div>
                                 <?php endif; ?>
                                 <div class="row g-3 mt-3">
-                                    <div class="col-md-3">
+                                    <div class="col-lg-2 col-md-4">
                                         <div class="metric-tile">
                                             <div class="metric-label">Индекс эффективности</div>
                                             <div class="metric-value"><?= Html::encode($analytics['index'] ?? '—') ?></div>
                                             <div class="metric-sub">Рейтинг: <?= Html::encode($analytics['rating'] ?? '—') ?></div>
                                         </div>
                                     </div>
-                                    <div class="col-md-3">
+                                    <div class="col-lg-2 col-md-4">
                                         <div class="metric-tile">
-                                            <div class="metric-label">Прогноз рейтинга</div>
-                                            <div class="metric-value"><?= Html::encode($forecast['predicted_rating'] ?? '—') ?></div>
-                                            <div class="metric-sub">Форма: <?= Html::encode($forecast['recent_rating_avg'] ?? 'нет данных') ?></div>
+                                            <div class="metric-label">Сезонный вклад</div>
+                                            <div class="metric-value"><?= Html::encode($analytics['season_score'] ?? '—') ?></div>
+                                            <div class="metric-sub">Выборка: <?= Html::encode($analytics['sample_minutes'] ?? '—') ?> мин</div>
                                         </div>
                                     </div>
-                                    <div class="col-md-3">
+                                    <div class="col-lg-2 col-md-4">
                                         <div class="metric-tile">
-                                            <div class="metric-label">Ожидаемые голы</div>
-                                            <div class="metric-value"><?= Html::encode($forecast['expected_goals'] ?? '—') ?></div>
-                                            <div class="metric-sub">xG: <?= Html::encode($forecast['expected_xg'] ?? '—') ?></div>
+                                            <div class="metric-label">Форма</div>
+                                            <div class="metric-value"><?= Html::encode($analytics['form_score'] ?? '—') ?></div>
+                                            <div class="metric-sub">Тренд: <?= Html::encode($trendDeltaLabel) ?></div>
                                         </div>
                                     </div>
-                                    <div class="col-md-3">
+                                    <div class="col-lg-2 col-md-4">
                                         <div class="metric-tile">
-                                            <div class="metric-label">Ожидаемые ассисты</div>
-                                            <div class="metric-value"><?= Html::encode($forecast['expected_assists'] ?? '—') ?></div>
-                                            <div class="metric-sub">xA: <?= Html::encode($forecast['expected_xa'] ?? '—') ?></div>
+                                            <div class="metric-label">Надежность оценки</div>
+                                            <div class="metric-value"><?= Html::encode($analytics['reliability_score'] ?? '—') ?></div>
+                                            <div class="metric-sub">Стабильность: <?= Html::encode($analytics['stability_score'] ?? '—') ?></div>
+                                        </div>
+                                    </div>
+                                    <div class="col-lg-2 col-md-4">
+                                        <div class="metric-tile">
+                                            <div class="metric-label">Прогноз индекса</div>
+                                            <div class="metric-value"><?= Html::encode($forecast['predicted_index'] ?? '—') ?></div>
+                                            <div class="metric-sub">Рейтинг: <?= Html::encode($forecast['predicted_rating'] ?? '—') ?></div>
+                                        </div>
+                                    </div>
+                                    <div class="col-lg-2 col-md-4">
+                                        <div class="metric-tile">
+                                            <div class="metric-label">Ожидаемое участие в голах</div>
+                                            <div class="metric-value"><?= Html::encode($xgiForecast !== null ? number_format($xgiForecast, 2) : '—') ?></div>
+                                            <div class="metric-sub">xG: <?= Html::encode($forecast['expected_xg'] ?? '—') ?> · xA: <?= Html::encode($forecast['expected_xa'] ?? '—') ?></div>
                                         </div>
                                     </div>
                                 </div>
+
+                                <?php if ($strengthLabels !== [] || $riskLabels !== []): ?>
+                                    <div class="mt-3 small">
+                                        <?php if ($strengthLabels !== []): ?>
+                                            <div><b>Сильные стороны:</b> <?= Html::encode(implode(', ', $strengthLabels)) ?></div>
+                                        <?php endif; ?>
+                                        <?php if ($riskLabels !== []): ?>
+                                            <div class="text-muted mt-1"><b>Факторы риска:</b> <?= Html::encode(implode(', ', $riskLabels)) ?></div>
+                                        <?php endif; ?>
+                                    </div>
+                                <?php endif; ?>
 
                                 <div class="table-responsive mt-4">
                                     <table class="table table-sm table-borderless stats-table">

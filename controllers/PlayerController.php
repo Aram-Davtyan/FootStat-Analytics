@@ -198,6 +198,7 @@ class PlayerController extends Controller
             $favorite = $this->findFavoriteForCurrentUser($playerId);
             if ($favorite !== null) {
                 $profile = $this->mergeProfileWithStoredStats($profile, $favorite);
+                $profile = array_merge($profile, $this->buildFavoriteAnalyticsPayload($favorite));
             }
 
             Yii::$app->cache->set($cacheKey, $profile, self::PROFILE_CACHE_TTL);
@@ -267,7 +268,7 @@ class PlayerController extends Controller
             $forecast = null;
 
             if ($mainSeason !== null) {
-                $analytics = PlayerAnalytics::efficiencyIndex($mainSeason);
+                $analytics = PlayerAnalytics::efficiencyIndex($mainSeason, $recentRatings);
                 $forecast = PlayerAnalytics::predictNextMatch($mainSeason, $recentRatings);
             }
 
@@ -503,6 +504,26 @@ class PlayerController extends Controller
         }
 
         return $ratings;
+    }
+
+    /**
+     * Собирает локально рассчитанную аналитику игрока для JSON-профиля.
+     *
+     * @return array<string, mixed>
+     */
+    private function buildFavoriteAnalyticsPayload(FavoritePlayer $favorite): array
+    {
+        $mainSeason = $this->pickMainSeason($favorite->seasonStats);
+        if ($mainSeason === null) {
+            return [];
+        }
+
+        $recentRatings = $this->getRecentRatingsFromDb((int) $favorite->id, 5);
+
+        return [
+            'analytics' => PlayerAnalytics::efficiencyIndex($mainSeason, $recentRatings),
+            'forecast' => PlayerAnalytics::predictNextMatch($mainSeason, $recentRatings),
+        ];
     }
 
     /**
